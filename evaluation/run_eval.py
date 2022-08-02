@@ -45,7 +45,7 @@ from t0.model import ModelBase
 
 logger = logging.getLogger(__name__)
 
-STORY_CLOZE_DIR = "/gpfswork/rech/six/commun/code/tr13f-6B3-ml-t0/story_cloze"
+STORY_CLOZE_DIR = "/gpfswork/rech/six/commun/code/tr13f-6B3-ml-t0/story_cloze_data"
 XSTORY_CLOZE_DIR = "/gpfswork/rech/six/commun/code/tr13f-6B3-ml-t0/xstory_cloze_data"
 
 def parse_args():
