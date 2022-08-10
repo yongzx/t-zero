@@ -43,11 +43,13 @@ class EncoderDecoderModel(ModelBase):
                 model_name_or_path,
                 from_tf=bool(".ckpt" in model_name_or_path),
                 config=config,
+                torch_dtype=kwargs.get("torch_dtype", None),
             )
         else:
             logger.info("Training new model from scratch")
             self._model = AutoModelForSeq2SeqLM.from_config(
                 config,
+                torch_dtype=kwargs.get("torch_dtype", None),
             )
 
 
@@ -56,7 +58,7 @@ class EncoderDecoderModel(ModelBase):
             k: batch[k]
             for k in ["input_ids", "attention_mask", "labels"]
         }
-        logits = self._model(**model_inputs).logits
+        logits = self._model(**model_inputs).logits.to(torch.float32)
         masked_log_probs = batch["labels_attention_mask"].unsqueeze(-1) * torch.log_softmax(logits, dim=-1)
         seq_token_log_probs = torch.gather(masked_log_probs, -1, batch["labels"].unsqueeze(-1))
         seq_log_prob = seq_token_log_probs.squeeze(dim=-1).sum(dim=-1)
@@ -88,11 +90,13 @@ class DecoderModel(ModelBase):
             self._model = AutoModelForCausalLM.from_pretrained(
                 model_name_or_path,
                 config=config,
+                torch_dtype=kwargs.get("torch_dtype", None),
             )
         else:
             logger.info("Training new model from scratch")
             self._model = AutoModelForCausalLM.from_config(
                 config,
+                torch_dtype=kwargs.get("torch_dtype", None),
             )
 
     def forward(self, batch, prefixlm=False):
@@ -125,7 +129,7 @@ class DecoderModel(ModelBase):
             mask[:, :, :, prefix_len:] += labels_causal_mask.masked_fill(labels_causal_mask.to(torch.bool), -torch.inf)
             model_inputs["causal_mask"] = mask
 
-        logits = self._model(**model_inputs).logits[:, prefix_len-1:-1]
+        logits = self._model(**model_inputs).logits[:, prefix_len-1:-1].to(torch.float32)
         masked_log_probs = batch["labels_attention_mask"].unsqueeze(-1) * torch.log_softmax(logits, dim=-1)
         seq_token_log_probs = torch.gather(masked_log_probs, -1, batch["labels"].unsqueeze(-1))
         seq_log_prob = seq_token_log_probs.squeeze(dim=-1).sum(dim=-1)

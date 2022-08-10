@@ -139,6 +139,12 @@ def parse_args():
         action="store_true",
         help="Use prefix language model.",
     )
+    parser.add_argument(
+        "--dtype",
+        type=str,
+        default=None,
+        help="torch_dtype of the model, e.g. bfloat16"
+    )
 
     args = parser.parse_args()
 
@@ -392,7 +398,8 @@ def main():
 
     model = ModelBase.from_config(
         config=config,
-        model_name_or_path=args.model_name_or_path
+        model_name_or_path=args.model_name_or_path,
+        torch_dtype=getattr(torch, args.dtype) if args.dtype is not None else None,
     )
     model = accelerator.prepare_model(model)
 
