@@ -80,7 +80,9 @@ def _expand_mask(mask: torch.Tensor, dtype: torch.dtype, tgt_len: int = None):
 
     return inverted_mask.masked_fill(inverted_mask.to(torch.bool), -torch.inf)
 
-
+def get_gpus_max_memory(max_memory):
+    max_memory = {i: max_memory for i in range(torch.cuda.device_count())}
+    return max_memory
 
 class DecoderModel(ModelBase):
     def __init__(self, config, model_name_or_path: Optional[str], **kwargs):
@@ -91,6 +93,10 @@ class DecoderModel(ModelBase):
                 model_name_or_path,
                 config=config,
                 torch_dtype=kwargs.get("torch_dtype", None),
+                # Necessary for pipeline parallelism:
+                device_map="auto",
+                max_memory=get_gpus_max_memory("50GB"),
+                offload_folder="offload",
             )
         else:
             logger.info("Training new model from scratch")
