@@ -110,6 +110,7 @@ class DecoderModel(ModelBase):
         bs, prefix_len = batch["input_ids"].shape
 
         model_inputs = {
+            # Shape [bs * answer_choices, seq_len]
             "input_ids": torch.cat([batch["input_ids"], batch["labels"]], dim=-1),
             "attention_mask": torch.cat([batch["attention_mask"], batch["labels_attention_mask"]], dim=-1),
         }
@@ -134,12 +135,17 @@ class DecoderModel(ModelBase):
             # Add causal mask for targets & let inputs attend bidirectionally
             mask[:, :, :, prefix_len:] += labels_causal_mask.masked_fill(labels_causal_mask.to(torch.bool), -torch.inf)
             model_inputs["causal_mask"] = mask
-
+        # Shape [bs * answer_choices, target_len, vocab]
         logits = self._model(**model_inputs).logits[:, prefix_len-1:-1].to(torch.float32)
+        # Shape [bs * answer_choices, target_len, vocab]
         masked_log_probs = batch["labels_attention_mask"].unsqueeze(-1) * torch.log_softmax(logits, dim=-1)
+        # Gather all answer choices -> Shape [bs * answer_choices, target_len, 1]
         seq_token_log_probs = torch.gather(masked_log_probs, -1, batch["labels"].unsqueeze(-1))
+        # Get logprobs sum for each answer choice -> Shape [bs * answer_choices]
         seq_log_prob = seq_token_log_probs.squeeze(dim=-1).sum(dim=-1)
+        # Shape [bs, answer_choices]
         seq_log_prob = seq_log_prob.view(batch["targets"].size(0),
                                          -1)  # TODO(Victor): this reshapes works based on the assumption that all examples have the same number of choices. the pre-processing doesn't make this assumption.
+        # Get final answer prediction -> Shape [bs]
         predictions = seq_log_prob.argmax(dim=-1)
         return predictions

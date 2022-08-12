@@ -185,9 +185,11 @@ def run_template(template_name, prompts, model, tokenizer, raw_datasets, acceler
     column_names = raw_datasets.column_names
     def preprocess_function(examples):
         bs = len(examples[column_names[0]])
-
+        # List of inputs ; [bs]
         input_texts = []
+        # List of targets ; [bs]
         target_texts = []
+        # List of List of answer choices ; [bs, x]
         answer_choices_texts = []
         for i in range(bs):
             ex = {
@@ -201,12 +203,14 @@ def run_template(template_name, prompts, model, tokenizer, raw_datasets, acceler
             if isinstance(target, list):
                 assert len(target) == 1, f"Got multiple targets: {target}"
                 target = target[0]
+            #target = " " + target
             ex_answer_choices = template.get_answer_choices_list(ex)
+            #ex_answer_choices = [" " + c for c in ex_answer_choices]
             assert target in ex_answer_choices, f"Expected {target} in {ex_answer_choices}"
             input_texts.append(input)
             target_texts.append(target)
             answer_choices_texts.append(ex_answer_choices)
-
+        # "input_ids": [bs[max_length]]
         tokenized_inputs = tokenizer(
             input_texts,
             padding=padding,
@@ -214,6 +218,8 @@ def run_template(template_name, prompts, model, tokenizer, raw_datasets, acceler
             truncation=True,
             add_special_tokens=False,
         )
+        # List of answer choices
+        # "input_ids": [bs[X[max_length]]], where max_length is a possibly padded answer choice
         tokenized_targets = [
             tokenizer(
                 ans_choi,
@@ -225,6 +231,8 @@ def run_template(template_name, prompts, model, tokenizer, raw_datasets, acceler
             for ans_choi in answer_choices_texts
         ]
 
+        # Duplicate input for each answer choice, where X are the answer choices
+        # "input_ids": [bs[X[max_length]]], where max_length is a possibly padded input text
         features = {
             k: [
                 [elem for _ in range(len(tokenized_targets[idx]["input_ids"]))]
@@ -232,7 +240,8 @@ def run_template(template_name, prompts, model, tokenizer, raw_datasets, acceler
             ]
             for k, v in tokenized_inputs.items()
         }
-
+        # Get the corrext answer choice [bs[X[max_length]]]
+        # This should be the same as features["labels"] = tokenized_targets
         features["labels"] = [
             tokenized_targets[idx]["input_ids"]
             for idx in range(bs)
@@ -241,6 +250,7 @@ def run_template(template_name, prompts, model, tokenizer, raw_datasets, acceler
             tokenized_targets[idx]["attention_mask"]
             for idx in range(bs)
         ]
+        # Indices of correct targets [bs[1]]
         features["targets"] = [
             answer_choices_texts[idx].index(t)
             for idx, t in enumerate(target_texts)
@@ -299,8 +309,8 @@ def run_template(template_name, prompts, model, tokenizer, raw_datasets, acceler
             predictions = model(batch, prefixlm=args.prefixlm)
 
         metric.add_batch(
-            predictions=accelerator.gather(predictions),
-            references=accelerator.gather(batch["targets"]),
+            predictions=accelerator.gather_for_metrics(predictions),
+            references=accelerator.gather_for_metrics(batch["targets"]),
         )
 
         progress_bar.update(1)
@@ -401,7 +411,9 @@ def main():
         model_name_or_path=args.model_name_or_path,
         torch_dtype=getattr(torch, args.dtype) if args.dtype is not None else None,
     )
-    model = accelerator.prepare_model(model)
+    # Let accelerate handle the dtype
+    if args.dtype is None:
+        model = accelerator.prepare_model(model)
 
     # Get the prompt to apply and the possible targets.
     # TODO(Victor): If pulling from pre-processed data, remove this logic.
