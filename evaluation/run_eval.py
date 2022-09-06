@@ -203,9 +203,12 @@ def run_template(template_name, prompts, model, tokenizer, raw_datasets, acceler
             if isinstance(target, list):
                 assert len(target) == 1, f"Got multiple targets: {target}"
                 target = target[0]
-            #target = " " + target
+            target = " " + target
             ex_answer_choices = template.get_answer_choices_list(ex)
-            #ex_answer_choices = [" " + c for c in ex_answer_choices]
+            # Nostrip solution
+            #target_strip = len(target) - len(target.strip())
+            #ex_answer_choices = [target[:target_strip] + c for c in ex_answer_choices]
+            ex_answer_choices = [" " + c for c in ex_answer_choices]
             assert target in ex_answer_choices, f"Expected {target} in {ex_answer_choices}"
             input_texts.append(input)
             target_texts.append(target)
@@ -360,7 +363,7 @@ def main():
     # Downloading and loading a dataset from the hub.
     if args.dataset_name == "anli":
         raw_datasets = load_dataset(args.dataset_name, split=args.dataset_config_name)
-    elif args.dataset_name.lower() == "Muennighoff/xwinograd".lower():
+    elif args.dataset_name.lower() in ("Muennighoff/xwinograd".lower(), "climate_fever"):
         raw_datasets = load_dataset(args.dataset_name, args.dataset_config_name, split="test")
     elif args.dataset_name.lower() == "story_cloze".lower():   
         raw_datasets = load_dataset(args.dataset_name, args.dataset_config_name, split="validation", data_dir=STORY_CLOZE_DIR)
