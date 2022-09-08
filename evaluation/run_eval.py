@@ -75,6 +75,12 @@ def parse_args():
         help="The template/prompt name. If None, we run all templates.",
     )
     parser.add_argument(
+        "--split",
+        type=str,
+        default="validation",
+        help="The dataset split, e.g. train.",
+    )
+    parser.add_argument(
         "--max_length",
         type=int,
         default=1024,
@@ -370,7 +376,7 @@ def main():
     elif "xstory_cloze".lower() in args.dataset_name.lower():
         raw_datasets = load_dataset(args.dataset_name, args.dataset_config_name, split="validation", data_dir=XSTORY_CLOZE_DIR)
     else:
-        raw_datasets = load_dataset(args.dataset_name, args.dataset_config_name, split="validation")
+        raw_datasets = load_dataset(args.dataset_name, args.dataset_config_name, split=args.split)
 
     #TODO(Victor): enable loading pre-processed dataset from https://huggingface.co/datasets/bigscience/P3
 
