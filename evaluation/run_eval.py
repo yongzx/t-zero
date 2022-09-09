@@ -367,18 +367,12 @@ def main():
     # In distributed evaluation, the load_dataset function guarantee that only one local process can concurrently
     # download the dataset.
     # Downloading and loading a dataset from the hub.
-    if args.dataset_name == "anli":
-        raw_datasets = load_dataset(args.dataset_name, split=args.dataset_config_name)
-    elif args.dataset_name.lower() in ("Muennighoff/xwinograd".lower(), "climate_fever"):
-        raw_datasets = load_dataset(args.dataset_name, args.dataset_config_name, split="test")
-    elif args.dataset_name.lower() == "story_cloze".lower():   
+    if args.dataset_name.lower() == "story_cloze".lower():   
         raw_datasets = load_dataset(args.dataset_name, args.dataset_config_name, split="validation", data_dir=STORY_CLOZE_DIR)
     elif "xstory_cloze".lower() in args.dataset_name.lower():
         raw_datasets = load_dataset(args.dataset_name, args.dataset_config_name, split="validation", data_dir=XSTORY_CLOZE_DIR)
     else:
         raw_datasets = load_dataset(args.dataset_name, args.dataset_config_name, split=args.split)
-
-    #TODO(Victor): enable loading pre-processed dataset from https://huggingface.co/datasets/bigscience/P3
 
     # Trim a number of evaluation examples
     if args.debug:
