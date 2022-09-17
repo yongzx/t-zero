@@ -182,6 +182,9 @@ def run_template(template_name, prompts, model, tokenizer, raw_datasets, acceler
             accelerator.print(f"Skipping as result file exists.")           
             return
 
+    # This copa template gets split due to the comma in the slurm script
+    if template_name == "C1 or C2? premise":
+        template_name = "C1 or C2? premise, so/because…"
     template = prompts[template_name]
 
 
@@ -371,6 +374,9 @@ def main():
         raw_datasets = load_dataset(args.dataset_name, args.dataset_config_name, split="validation", data_dir=STORY_CLOZE_DIR)
     elif "xstory_cloze".lower() in args.dataset_name.lower():
         raw_datasets = load_dataset(args.dataset_name, args.dataset_config_name, split="validation", data_dir=XSTORY_CLOZE_DIR)
+    # Parsing problems with this template name
+    elif template_name == "C1 or C2? premise, so/because…":
+        raw_datasets = load_dataset(args.dataset_name, args.dataset_config_name, split="validation")
     else:
         raw_datasets = load_dataset(args.dataset_name, args.dataset_config_name, split=args.split)
 
