@@ -375,7 +375,7 @@ def main():
     elif "xstory_cloze".lower() in args.dataset_name.lower():
         raw_datasets = load_dataset(args.dataset_name, args.dataset_config_name, split="validation", data_dir=XSTORY_CLOZE_DIR)
     # Parsing problems with this template name
-    elif template_name == "C1 or C2? premise, so/because…":
+    elif (args.template_config_name is not None) and (args.template_name.startswith("C1 or C2? premise")):
         raw_datasets = load_dataset(args.dataset_name, args.dataset_config_name, split="validation")
     else:
         raw_datasets = load_dataset(args.dataset_name, args.dataset_config_name, split=args.split)
