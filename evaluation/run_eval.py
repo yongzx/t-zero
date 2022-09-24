@@ -377,6 +377,8 @@ def main():
     # Parsing problems with this template name
     elif (args.template_name is not None) and (args.template_name.startswith("C1 or C2? premise")):
         raw_datasets = load_dataset(args.dataset_name, args.dataset_config_name, split="validation")
+    elif args.dataset_name.lower() == "anli":
+        raw_datasets = load_dataset(args.dataset_name, None, split=args.split)
     else:
         raw_datasets = load_dataset(args.dataset_name, args.dataset_config_name, split=args.split)
 
