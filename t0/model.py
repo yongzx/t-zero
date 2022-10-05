@@ -58,6 +58,7 @@ class EncoderDecoderModel(ModelBase):
             k: batch[k]
             for k in ["input_ids", "attention_mask", "labels"]
         }
+        print("Got device", model_inputs["input_ids"].device, self._model.device)
         logits = self._model(**model_inputs).logits.to(torch.float32)
         masked_log_probs = batch["labels_attention_mask"].unsqueeze(-1) * torch.log_softmax(logits, dim=-1)
         seq_token_log_probs = torch.gather(masked_log_probs, -1, batch["labels"].unsqueeze(-1))
