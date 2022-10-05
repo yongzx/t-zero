@@ -53,7 +53,7 @@ class EncoderDecoderModel(ModelBase):
             )
 
 
-    def forward(self, batch) -> torch.Tensor:
+    def forward(self, batch, **kwargs) -> torch.Tensor:
         model_inputs = {
             k: batch[k]
             for k in ["input_ids", "attention_mask", "labels"]
