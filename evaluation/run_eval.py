@@ -151,6 +151,11 @@ def parse_args():
         default=None,
         help="torch_dtype of the model, e.g. bfloat16"
     )
+    parser.add_argument(
+        "--nospace",
+        action="store_true",
+        help="Do not prepend a space to targets.",
+    )
 
     args = parser.parse_args()
 
@@ -212,12 +217,14 @@ def run_template(template_name, prompts, model, tokenizer, raw_datasets, acceler
             if isinstance(target, list):
                 assert len(target) == 1, f"Got multiple targets: {target}"
                 target = target[0]
-            target = " " + target
+            if not args.nospace:
+                target = " " + target
             ex_answer_choices = template.get_answer_choices_list(ex)
             # Nostrip solution
             #target_strip = len(target) - len(target.strip())
             #ex_answer_choices = [target[:target_strip] + c for c in ex_answer_choices]
-            ex_answer_choices = [" " + c for c in ex_answer_choices]
+            if not args.nospace:
+                ex_answer_choices = [" " + c for c in ex_answer_choices]
             assert target in ex_answer_choices, f"Expected {target} in {ex_answer_choices}"
             input_texts.append(input)
             target_texts.append(target)
