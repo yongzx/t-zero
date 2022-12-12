@@ -22,16 +22,16 @@ setup(
     license="Apache Software License 2.0",
     long_description=readme,
     install_requires=[
-        "promptsource",
-        "accelerate",
-        "transformers",
-        "torch",
-        "datasets",
-        "jinja2",
-        "datasets",
-        "sentencepiece",
-        "protobuf",
-        "scikit-learn"
+        # "promptsource",
+        # "accelerate",
+        # "transformers",
+        # "torch",
+        # "datasets",
+        # "jinja2",
+        # "datasets",
+        # "sentencepiece",
+        # "protobuf",
+        # "scikit-learn"
     ],
     extras_require={
         "seqio_tasks": [
