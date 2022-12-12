@@ -156,6 +156,22 @@ def parse_args():
         action="store_true",
         help="Do not prepend a space to targets.",
     )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=100,
+        help="For debugging purpose. Limit the number of eval samples",
+    )
+    parser.add_argument(
+        "--use_auth_token",
+        type=str,
+        help="For accessing private models",
+    )
+    parser.add_argument(
+        "--adapter_dir",
+        type=str,
+        help="Directory to adapter directory",
+    )
 
     args = parser.parse_args()
 
@@ -183,7 +199,7 @@ def run_template(template_name, prompts, model, tokenizer, raw_datasets, acceler
         )
         os.makedirs(result_dir, exist_ok=True)
 
-        if os.path.exists(os.path.join(result_dir, "results.json")):
+        if os.path.exists(os.path.join(result_dir, f"{args.model_name_or_path.split('/')[-1]}_results.json")):
             accelerator.print(f"Skipping as result file exists.")           
             return
 
@@ -281,10 +297,13 @@ def run_template(template_name, prompts, model, tokenizer, raw_datasets, acceler
         eval_dataset = raw_datasets.map(
             preprocess_function, batched=True, remove_columns=column_names
         )
-
+    
     # Log a few random samples from the eval set:
     for index in random.sample(range(len(eval_dataset)), 3):
         logger.info(f"Sample {index} of the training set: {eval_dataset[index]}.")
+        logger.info(f"Input: {tokenizer.decode(eval_dataset[index]['input_ids'][0])}")
+        logger.info(f"=======")
+
 
     # DataLoaders creation:
     if args.pad_to_max_length:
@@ -346,7 +365,7 @@ def run_template(template_name, prompts, model, tokenizer, raw_datasets, acceler
     }
     if accelerator.is_main_process:
         if result_dir is not None:
-            with open(os.path.join(result_dir, "results.json"), "w") as f:
+            with open(os.path.join(result_dir, f"{args.model_name_or_path.split('/')[-1]}_results.json"), "w") as f:
                 json.dump(results, f, indent=2)
 
 def main():
@@ -387,29 +406,29 @@ def main():
     elif args.dataset_name.lower() == "anli":
         raw_datasets = load_dataset(args.dataset_name, None, split=args.split)
     else:
-        raw_datasets = load_dataset(args.dataset_name, args.dataset_config_name, split=args.split)
+        raw_datasets = load_dataset(args.dataset_name, args.dataset_config_name, split=args.split, cache_dir="/users/zyong2/data/zyong2/huggingface")
 
     # Trim a number of evaluation examples
     if args.debug:
-        raw_datasets = raw_datasets.select(range(min(len(raw_datasets),100)))
+        raw_datasets = raw_datasets.select(range(min(len(raw_datasets), args.limit)))
 
     # Load pretrained model and tokenizer
     #
     # In distributed training, the .from_pretrained methods guarantee that only one local process can concurrently
     # download model & vocab.
     if args.config_name:
-        config = AutoConfig.from_pretrained(args.config_name)
+        config = AutoConfig.from_pretrained(args.config_name, use_auth_token=args.use_auth_token)
     elif args.model_name_or_path:
-        config = AutoConfig.from_pretrained(args.model_name_or_path)
+        config = AutoConfig.from_pretrained(args.model_name_or_path, use_auth_token=args.use_auth_token)
     else:
         raise ValueError(
             "Either `args.config_name` or `args.model_name_or_path` should be provided."
         )
 
     if args.tokenizer_name:
-        tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name, use_fast=not args.use_slow_tokenizer, padding_side="left")
+        tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name, use_auth_token=args.use_auth_token, use_fast=not args.use_slow_tokenizer, padding_side="left", cache_dir="/users/zyong2/data/zyong2/huggingface")
     elif args.model_name_or_path:
-        tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, use_fast=not args.use_slow_tokenizer, padding_side="left")
+        tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, use_auth_token=args.use_auth_token, use_fast=not args.use_slow_tokenizer, padding_side="left", cache_dir="/users/zyong2/data/zyong2/huggingface")
     else:
         raise ValueError(
             "You are instantiating a new tokenizer from scratch. This is not supported by this script."
@@ -423,12 +442,15 @@ def main():
         if tokenizer.pad_token is None:
             raise ValueError("Please define a pad token id.")
 
-
     model = ModelBase.from_config(
         config=config,
+        cache_dir="/users/zyong2/data/zyong2/huggingface",
         model_name_or_path=args.model_name_or_path,
         torch_dtype=getattr(torch, args.dtype) if args.dtype is not None else None,
+        use_auth_token=args.use_auth_token,
+        adapter_dir=args.adapter_dir,
     )
+
     # Let accelerate handle the dtype
     if args.dtype is None:
         model = accelerator.prepare_model(model)

@@ -47,12 +47,13 @@ class EncoderDecoderModel(ModelBase):
         if model_name_or_path:
             self._model = AutoModelForSeq2SeqLM.from_pretrained(
                 model_name_or_path,
+                cache_dir="/users/zyong2/data/zyong2/huggingface",
                 from_tf=bool(".ckpt" in model_name_or_path),
                 config=config,
                 torch_dtype=kwargs.get("torch_dtype", None),
-                device_map="auto",
-                offload_folder="offload",
-                max_memory=get_gpus_max_memory("50GB"),
+                # device_map="auto",
+                # offload_folder="offload",
+                # max_memory=get_gpus_max_memory("50GB"),
 
             )
         else:
@@ -98,19 +99,27 @@ class DecoderModel(ModelBase):
         if model_name_or_path:
             self._model = AutoModelForCausalLM.from_pretrained(
                 model_name_or_path,
+                cache_dir="/users/zyong2/data/zyong2/huggingface",
                 config=config,
                 torch_dtype=kwargs.get("torch_dtype", None),
-                # Necessary for pipeline parallelism:
-                device_map="auto",
-                max_memory=get_gpus_max_memory("50GB"),
-                offload_folder="offload",
+                use_auth_token=kwargs.get("use_auth_token", None)
+                # # Necessary for pipeline parallelism:  # commenting out because adapter-transformers don't support
+                # device_map="auto",
+                # max_memory=get_gpus_max_memory("50GB"),
+                # offload_folder="offload",
             )
         else:
             logger.info("Training new model from scratch")
             self._model = AutoModelForCausalLM.from_config(
                 config,
                 torch_dtype=kwargs.get("torch_dtype", None),
+                use_auth_token=kwargs.get("use_auth_token", None),
             )
+        
+        if kwargs.get("adapter_dir", None):
+            print(f"load language adapters ({kwargs.get('adapter_dir', None).split('/')[-1]})")
+            lang_adapter_name = self._model.load_adapter(kwargs.get("adapter_dir", None))
+            self._model.set_active_adapters(lang_adapter_name)
 
     def forward(self, batch, prefixlm=False):
         device = batch["input_ids"].device
